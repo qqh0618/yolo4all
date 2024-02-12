@@ -147,7 +147,7 @@ class DetThread(QThread):
                     if img.ndimension() == 3:
                         img = img.unsqueeze(0)
 
-                    pred = model(img, augment=augment)[0]
+                    pred = model(img, augment=augment,conf = self.conf_thres, iou =self.iou_thres)[0]
                     im0 = pred.plot()
 
                     if self.rate_check:
