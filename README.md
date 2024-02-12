@@ -1,5 +1,5 @@
-# PyQt5-YOLOv8
-
+# PyQt5-YOLOv8 
+# [中文文档](https://github.com/qqh0618/PyQt5-YOLOv8/blob/main/README_zh.md)
 ## Update
 - 2024/02/12 Project Initialize
 - 2024/02/13 demo over
