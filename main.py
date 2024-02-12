@@ -13,13 +13,9 @@ import os
 import time
 import cv2
 
-from models.experimental import attempt_load
 from utils.datasets import LoadImages, LoadWebcam
 from utils.CustomMessageBox import MessageBox
-from utils.general import check_img_size, check_requirements, check_imshow, colorstr, non_max_suppression, \
-    apply_classifier, scale_coords, xyxy2xywh, strip_optimizer, set_logging, increment_path
-# from utils.plots import colors, plot_one_box, plot_one_box_PIL
-from utils.plots import Annotator, colors, save_one_box
+
 
 from utils.torch_utils import select_device
 from utils.capnums import Camera
@@ -91,7 +87,7 @@ class DetThread(QThread):
 
             # Dataloader
             if self.source.isnumeric() or self.source.lower().startswith(('rtsp://', 'rtmp://', 'http://', 'https://')):
-                view_img = check_imshow()
+
                 cudnn.benchmark = True  # set True to speed up constant image size inference
                 dataset = LoadWebcam(self.source, img_size=imgsz)
                 # bs = len(dataset)  # batch_size
