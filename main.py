@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QMenu, QActi
 from main_win.win import Ui_mainWindow
 from PyQt5.QtCore import Qt, QPoint, QTimer, QThread, pyqtSignal
 from PyQt5.QtGui import QImage, QPixmap, QPainter, QIcon
-
+from ultralytics import YOLO
 import sys
 import os
 import json
@@ -26,6 +26,8 @@ from utils.capnums import Camera
 from dialog.rtsp_win import Window
 
 
+
+
 class DetThread(QThread):
     send_img = pyqtSignal(np.ndarray)
     send_raw = pyqtSignal(np.ndarray)
@@ -37,8 +39,8 @@ class DetThread(QThread):
 
     def __init__(self):
         super(DetThread, self).__init__()
-        self.weights = './yolov5s.pt'
-        self.current_weight = './yolov5s.pt'
+        self.weights = './yolov8n.pt'
+        self.current_weight = './yolov8n.pt'
         self.source = '0'
         self.conf_thres = 0.25
         self.iou_thres = 0.45
@@ -79,12 +81,10 @@ class DetThread(QThread):
             half &= device.type != 'cpu'  # half precision only supported on CUDA
 
             # Load model
-            model = attempt_load(self.weights, map_location=device)  # load FP32 model
+            model = YOLO(self.weights)  # load FP32 model
             num_params = 0
             for param in model.parameters():
                 num_params += param.numel()
-            stride = int(model.stride.max())  # model stride
-            imgsz = check_img_size(imgsz, s=stride)  # check image size
             names = model.module.names if hasattr(model, 'module') else model.names  # get class names
             if half:
                 model.half()  # to FP16
@@ -93,10 +93,10 @@ class DetThread(QThread):
             if self.source.isnumeric() or self.source.lower().startswith(('rtsp://', 'rtmp://', 'http://', 'https://')):
                 view_img = check_imshow()
                 cudnn.benchmark = True  # set True to speed up constant image size inference
-                dataset = LoadWebcam(self.source, img_size=imgsz, stride=stride)
+                dataset = LoadWebcam(self.source, img_size=imgsz)
                 # bs = len(dataset)  # batch_size
             else:
-                dataset = LoadImages(self.source, img_size=imgsz, stride=stride)
+                dataset = LoadImages(self.source, img_size=imgsz)
 
             # Run inference
             if device.type != 'cpu':
@@ -117,12 +117,10 @@ class DetThread(QThread):
                 # change model
                 if self.current_weight != self.weights:
                     # Load model
-                    model = attempt_load(self.weights, map_location=device)  # load FP32 model
+                    model = YOLO(self.weights)  # load FP32 model
                     num_params = 0
                     for param in model.parameters():
                         num_params += param.numel()
-                    stride = int(model.stride.max())  # model stride
-                    imgsz = check_img_size(imgsz, s=stride)  # check image size
                     names = model.module.names if hasattr(model, 'module') else model.names  # get class names
                     if half:
                         model.half()  # to FP16
@@ -154,30 +152,13 @@ class DetThread(QThread):
                         img = img.unsqueeze(0)
 
                     pred = model(img, augment=augment)[0]
-
-                    # Apply NMS
-                    pred = non_max_suppression(pred, self.conf_thres, self.iou_thres, classes, agnostic_nms, max_det=max_det)
-                    # Process detections
-                    for i, det in enumerate(pred):  # detections per image
-                        im0 = im0s.copy()
-                        annotator = Annotator(im0, line_width=line_thickness, example=str(names))
-                        if len(det):
-                            # Rescale boxes from img_size to im0 size
-                            det[:, :4] = scale_coords(img.shape[2:], det[:, :4], im0.shape).round()
-
-                            # Write results
-                            for *xyxy, conf, cls in reversed(det):
-                                c = int(cls)  # integer class
-                                statistic_dic[names[c]] += 1
-                                label = None if hide_labels else (names[c] if hide_conf else f'{names[c]} {conf:.2f}')
-                                annotator.box_label(xyxy, label, color=colors(c, True))
+                    im0 = pred.plot()
 
                     if self.rate_check:
                         time.sleep(1/self.rate)
-                    im0 = annotator.result()
                     self.send_img.emit(im0)
                     self.send_raw.emit(im0s if isinstance(im0s, np.ndarray) else im0s[0])
-                    self.send_statistic.emit(statistic_dic)
+                    # self.send_statistic.emit(statistic_dic)
                     if self.save_fold:
                         os.makedirs(self.save_fold, exist_ok=True)
                         if self.vid_cap is None:
@@ -207,8 +188,6 @@ class DetThread(QThread):
 
         except Exception as e:
             self.send_msg.emit('%s' % e)
-
-
 
 class MainWindow(QMainWindow, Ui_mainWindow):
     def __init__(self, parent=None):
