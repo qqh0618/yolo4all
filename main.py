@@ -22,8 +22,6 @@ from utils.capnums import Camera
 from dialog.rtsp_win import Window
 
 
-
-
 class DetThread(QThread):
     send_img = pyqtSignal(np.ndarray)
     send_raw = pyqtSignal(np.ndarray)
@@ -140,7 +138,7 @@ class DetThread(QThread):
                     else:
                         percent = self.percent_length
 
-                    statistic_dic = {name: 0 for name in names}
+                    statistic_dic = {name: 0 for name in names.values()}
                     img = torch.from_numpy(img).to(device)
                     img = img.half() if half else img.float()  # uint8 to fp16/32
                     img /= 255.0  # 0 - 255 to 0.0 - 1.0
@@ -149,12 +147,18 @@ class DetThread(QThread):
 
                     pred = model(img, augment=augment,conf = self.conf_thres, iou =self.iou_thres)[0]
                     im0 = pred.plot()
-
+                    for i, det in enumerate(pred):  # per image
+                        c = int(det.boxes.cls)
+                            # # Write results
+                            # for *xyxy, conf, cls in reversed(det):
+                            #     c = int(cls)
+                        statistic_dic[names[c]] += 1
                     if self.rate_check:
                         time.sleep(1/self.rate)
                     self.send_img.emit(im0)
                     self.send_raw.emit(im0s if isinstance(im0s, np.ndarray) else im0s[0])
-                    # self.send_statistic.emit(statistic_dic)
+
+                    self.send_statistic.emit(statistic_dic)
                     if self.save_fold:
                         os.makedirs(self.save_fold, exist_ok=True)
                         if self.vid_cap is None:
