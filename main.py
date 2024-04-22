@@ -1,3 +1,4 @@
+from PIL import Image
 from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QMenu, QAction
 from main_win.win import Ui_mainWindow
 from PyQt5.QtCore import Qt, QPoint, QTimer, QThread, pyqtSignal
@@ -145,8 +146,9 @@ class DetThread(QThread):
                     if img.ndimension() == 3:
                         img = img.unsqueeze(0)
 
-                    pred = model(img, augment=augment,conf = self.conf_thres, iou =self.iou_thres)[0]
-                    im0 = pred.plot()
+                    pred = model(img,conf = self.conf_thres, iou =self.iou_thres)[0]
+                    im0_bgr = pred.plot()
+                    im0 = im0_bgr[..., ::-1]
                     for i, det in enumerate(pred):  # per image
                         c = int(det.boxes.cls)
                             # # Write results
@@ -156,8 +158,9 @@ class DetThread(QThread):
                     if self.rate_check:
                         time.sleep(1/self.rate)
                     self.send_img.emit(im0)
-                    self.send_raw.emit(im0s if isinstance(im0s, np.ndarray) else im0s[0])
-
+                    self.send_raw.emit(im0s)
+                    cv2.imwrite("abc.jpg", im0)
+                    cv2.imwrite("def.jpg", im0s)
                     self.send_statistic.emit(statistic_dic)
                     if self.save_fold:
                         os.makedirs(self.save_fold, exist_ok=True)
