@@ -225,31 +225,6 @@ class DetThread(QThread):
         return init_deepsort
 
     def deepsortUtil(self, pred):
-        det = pred.boxes.data
-        im0 = pred.orig_img
-        if len(det) == 0:
-            return
-        xywh_bboxs = []
-        confs = []
-        oids = []
-        outputs = []
-        for *xyxy, conf, cls in reversed(det):
-            x_c, y_c, bbox_w, bbox_h = self.xyxy_to_xywh(*xyxy)
-            xywh_obj = [x_c, y_c, bbox_w, bbox_h]
-            xywh_bboxs.append(xywh_obj)
-            confs.append([conf.item()])
-            oids.append(int(cls))
-        xywhs = torch.Tensor(xywh_bboxs)
-        confss = torch.Tensor(confs)
-        outputs, predicts = self.deepsort.update(xywhs, confss, oids, im0)
-        print(len(outputs))
-        if len(outputs) > 0:
-            bbox_xyxy = outputs[:, :4]
-            identities = outputs[:, -2]
-            object_id = outputs[:, -1]
-
-            imgdds = self.draw_boxes(im0, bbox_xyxy, pred.names, object_id, identities, predicts=predicts)
-            return imgdds
         return None
 
     def xyxy_to_xywh(self, *xyxy):
