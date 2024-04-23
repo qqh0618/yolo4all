@@ -3,7 +3,7 @@
 ## Update
 - 2024/02/12 Project Initialize
 - 2024/02/13 demo over
-
+- 2024/04/23 add DeepSort and Future Trajectory Prediction(predict 10 frames)
 ## Introduction
 
 As a mature project, YOLOv8 does not have a complete GUI, and the structure of YOLOv8 and YOLOv5 projects is very different. Therefore, this project draws on the excellent YOLOv5 pyqt project and then conducts secondary development to implement YOLOv8 GUI
