@@ -47,6 +47,7 @@ class DetThread(QThread):
         super(DetThread, self).__init__()
         self.weights = './yolov8n.pt'
         self.current_weight = './yolov8n.pt'
+        self.mode = 'detect'
         self.source = '0'
         self.conf_thres = 0.25
         self.iou_thres = 0.45
@@ -157,21 +158,32 @@ class DetThread(QThread):
                     img /= 255.0  # 0 - 255 to 0.0 - 1.0
                     if img.ndimension() == 3:
                         img = img.unsqueeze(0)
-
                     pred = model(img,conf = self.conf_thres, iou =self.iou_thres)[0]
-
-                    img_ds = self.deepsortUtil(pred)
-
                     im0_bgr = pred.plot()
-                    if img_ds is not None:
-                        im0_bgr = img_ds
+
+                    if self.mode=="track":
+                        img_ds = self.deepsortUtil(pred)
+                        if img_ds is not None:
+                            im0_bgr = img_ds
+
                     im0 = im0_bgr[..., ::-1]
-                    for i, det in enumerate(pred):  # per image
-                        c = int(det.boxes.cls)
-                            # # Write results
-                            # for *xyxy, conf, cls in reversed(det):
-                            #     c = int(cls)
-                        statistic_dic[names[c]] += 1
+                    print(self.mode)
+                    if self.mode in ["detect", "track"]:
+                        for i, det in enumerate(pred):  # per image
+                            c = int(det.boxes.cls)
+                                # # Write results
+                                # for *xyxy, conf, cls in reversed(det):
+                                #     c = int(cls)
+                            statistic_dic[names[c]] += 1
+
+                    if self.mode in ["cls"]:
+                        for i, det in enumerate(pred):  # per image
+                            c = int(det.probs.top1)
+                                # # Write results
+                                # for *xyxy, conf, cls in reversed(det):
+                                #     c = int(cls)
+                            # statistic_dic[names[c]] += 1
+
                     if self.rate_check:
                         time.sleep(1/self.rate)
 
@@ -402,7 +414,9 @@ class MainWindow(QMainWindow, Ui_mainWindow):
         # yolov5 thread
         self.det_thread = DetThread()
         self.model_type = self.comboBox.currentText()
+        self.mode_type = self.comboBox_mode.currentText()
         self.det_thread.weights = "./pt/%s" % self.model_type
+        self.det_thread.mode = self.mode_type
         self.det_thread.source = '0'
         self.det_thread.percent_length = self.progressBar.maximum()
         self.det_thread.send_raw.connect(lambda x: self.show_image(x, self.raw_video))
@@ -420,6 +434,7 @@ class MainWindow(QMainWindow, Ui_mainWindow):
         self.stopButton.clicked.connect(self.stop)
 
         self.comboBox.currentTextChanged.connect(self.change_model)
+        self.comboBox_mode.currentTextChanged.connect(self.change_mode)
         self.confSpinBox.valueChanged.connect(lambda x: self.change_val(x, 'confSpinBox'))
         self.confSlider.valueChanged.connect(lambda x: self.change_val(x, 'confSlider'))
         self.iouSpinBox.valueChanged.connect(lambda x: self.change_val(x, 'iouSpinBox'))
@@ -468,6 +483,12 @@ class MainWindow(QMainWindow, Ui_mainWindow):
         self.rtsp_window.rtspEdit.setText(ip)
         self.rtsp_window.show()
         self.rtsp_window.rtspButton.clicked.connect(lambda: self.load_rtsp(self.rtsp_window.rtspEdit.text()))
+
+
+    def change_mode(self):
+        self.mode_type = self.comboBox_mode.currentText()
+        self.det_thread.mode = self.mode_type
+        # self.statistic_msg('Change model to %s' % x)
 
     def load_rtsp(self, ip):
         try:
